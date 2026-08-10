@@ -8,8 +8,8 @@
       ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝
    ═══════════════════════════════════════════════════════════════════════════════
    tapped.cc - Ultimate Da Hood HvH Script
-   GitHub: https://github.com/yourusername/tapped.cc
-   Version: 2.0.0
+   GitHub: https://github.com/jackrst/yapped.cc-dahood-
+   Version: 2.0.1
    Last Updated: 2024
    ═══════════════════════════════════════════════════════════════════════════════
 
@@ -21,40 +21,40 @@
    5.  Settings (FULLY CUSTOMIZABLE)
    6.  Core Functions
    7.  No Slowdown Fix
-   8.  Target Indicator UI (Draggable)
-   9.  Kill Aura Bubble (Holographic)
-   10. Hitbox Expander + Visual
-   11. Smart Weapon Selection
-   12. Auto Stomp
-   13. Ragebot Keybind
-   14. FOV Circle
-   15. Helper Functions
-   16. Cache System (Validate/Update)
-   17. GunHandler Hooks (Silent Aim + Bullet TP + Glow Tracers)
-   18. Velocity Desync
-   19. Network Fake Lag
-   20. Anti-Stomp (Defov)
-   21. Walkable Desync (Replaces Anti-Aim)
-   22. SpinBot
-   23. Desync Visual (Fake Character)
-   24. Orbiting Target Effect
-   25. Fly / Noclip / Speed
-   26. Bunny Hop / Auto Strafing / Auto Crouch
-   27. ESP (Fully Customizable)
-   28. Chams (Fully Customizable)
-   29. World Mods (Fully Customizable)
-   30. Respawn Handler
-   31. Initialization
-   32. Update Loops
-   33. Starlight UI (Every Feature Toggleable)
+   8.  Orbiting Objects Declaration (FIXED)
+   9.  Target Indicator UI (Draggable)
+   10. Kill Aura Bubble (Holographic)
+   11. Hitbox Expander + Visual
+   12. Smart Weapon Selection
+   13. Auto Stomp
+   14. Ragebot Keybind
+   15. FOV Circle
+   16. Helper Functions
+   17. Cache System (Validate/Update)
+   18. GunHandler Hooks (Silent Aim + Bullet TP + Glow Tracers)
+   19. Velocity Desync
+   20. Network Fake Lag
+   21. Anti-Stomp (Defov)
+   22. Walkable Desync (Replaces Anti-Aim)
+   23. SpinBot
+   24. Desync Visual (Fake Character)
+   25. Orbiting Target Effect
+   26. Fly / Noclip / Speed
+   27. Bunny Hop / Auto Strafing / Auto Crouch
+   28. ESP (Fully Customizable)
+   29. Chams (Fully Customizable)
+   30. World Mods (Fully Customizable)
+   31. Respawn Handler
+   32. Initialization
+   33. Update Loops
+   34. Starlight UI (Every Feature Toggleable)
    ═══════════════════════════════════════════════════════════════════════════════
 --]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. LOAD LIBRARIES
+-- 1. LOAD LIBRARIES (FIXED: Single Load)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/starlight"))()
 local Starlight = loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/starlight"))()
 local NebulaIcons = loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/nebula-icon-library-loader"))()
 
@@ -107,6 +107,7 @@ local Settings = {
     -- ── Ragebot ──
     SilentAim = true,
     SilentAimMode = "Rage",          -- Rage / Legit
+    LegitSmoothness = 0.3,           -- ⬅️ ADDED: 0.01-1.0
     FOVRadius = 9999,                -- 50-9999
     AimPart = "Head",                -- Head / Torso / HumanoidRootPart / UpperTorso / Left Arm / Right Arm / Left Leg / Right Leg
     TeamCheck = false,
@@ -249,7 +250,14 @@ if gunHandlerAvailable and GunHandler then
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 8. TARGET INDICATOR UI (Draggable Box)
+-- 8. ORBITING OBJECTS DECLARATION (FIXED: Moved Before clearCache)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local orbitingObjects = {}
+local orbitConnection = nil
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 9. TARGET INDICATOR UI (Draggable Box)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local targetGui = Instance.new("ScreenGui")
@@ -315,7 +323,7 @@ local function updateTargetIndicator()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 9. KILL AURA BUBBLE (Holographic Range Indicator)
+-- 10. KILL AURA BUBBLE (Holographic Range Indicator)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local killAuraBubble = nil
@@ -398,13 +406,12 @@ local function updateKillAuraBubble()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 10. HITBOX EXPANDER + VISUAL (Shows expanded hitbox)
+-- 11. HITBOX EXPANDER + VISUAL (Shows expanded hitbox)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local hitboxVisuals = {}
 
 local function updateHitboxVisual()
-    -- Clear old visuals
     for _, v in pairs(hitboxVisuals) do
         if v then v:Destroy() end
     end
@@ -415,7 +422,6 @@ local function updateHitboxVisual()
     for _, char in ipairs(getCharacters()) do
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp and hrp ~= Character:FindFirstChild("HumanoidRootPart") then
-            -- Create a transparent box showing the expanded hitbox
             local visual = Instance.new("Part")
             visual.Size = Vector3.new(Settings.HitboxExpanderSize, Settings.HitboxExpanderSize, Settings.HitboxExpanderSize)
             visual.CFrame = hrp.CFrame
@@ -425,14 +431,11 @@ local function updateHitboxVisual()
             visual.Anchored = true
             visual.CanCollide = false
             visual.Parent = workspace
-            
-            -- Weld to follow the player
             local weld = Instance.new("Weld")
             weld.Part0 = hrp
             weld.Part1 = visual
             weld.C0 = CFrame.new(0, 0, 0)
             weld.Parent = visual
-            
             table.insert(hitboxVisuals, visual)
         end
     end
@@ -455,7 +458,7 @@ local function applyHitboxExpander()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 11. SMART WEAPON SELECTION
+-- 12. SMART WEAPON SELECTION
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function isGun(tool)
@@ -518,7 +521,7 @@ local function equipBestGun()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 12. AUTO STOMP
+-- 13. AUTO STOMP
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function stompTarget()
@@ -539,7 +542,7 @@ local function stompTarget()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 13. RAGEBOT KEYBIND
+-- 14. RAGEBOT KEYBIND
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local ragebotActive = false
@@ -560,7 +563,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 14. FOV CIRCLE
+-- 15. FOV CIRCLE
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local fovCircle = Drawing.new("Circle")
@@ -580,7 +583,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 15. HELPER FUNCTIONS
+-- 16. HELPER FUNCTIONS
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function getCharacters()
@@ -627,7 +630,7 @@ local function clearCache()
     AimCache.TargetPos = nil
     AimCache.Frame = 0
     AimCache.Locked = false
-    -- Clear orbiting objects
+    -- Clear orbiting objects (FIXED)
     for _, obj in pairs(orbitingObjects) do
         if obj then obj:Destroy() end
     end
@@ -690,7 +693,7 @@ local function getCurrentWeapon()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 16. CACHE SYSTEM (Validate / Update)
+-- 17. CACHE SYSTEM (Validate / Update)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function validateCache()
@@ -751,7 +754,7 @@ local function updateCache()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 17. GUNHANDLER HOOKS (Silent Aim + Bullet TP + Glow Tracers)
+-- 18. GUNHANDLER HOOKS (Silent Aim + Bullet TP + Glow Tracers)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 if gunHandlerAvailable and GunHandler then
@@ -866,7 +869,7 @@ if gunHandlerAvailable and GunHandler then
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 18. VELOCITY DESYNC
+-- 19. VELOCITY DESYNC
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local velocityDesyncConnection = nil
@@ -890,7 +893,7 @@ end
 toggleVelocityDesync(Settings.VelocityDesync)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 19. NETWORK FAKE LAG
+-- 20. NETWORK FAKE LAG
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local networkFakeLagConnection = nil
@@ -918,7 +921,7 @@ end
 toggleNetworkFakeLag(Settings.NetworkFakeLag)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 20. ANTI-STOMP (Defov)
+-- 21. ANTI-STOMP (Defov)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local antiStompConnection = nil
@@ -943,7 +946,7 @@ end
 toggleAntiStomp(Settings.AntiStomp)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 21. WALKABLE DESYNC (Replaces Anti-Aim)
+-- 22. WALKABLE DESYNC (Replaces Anti-Aim)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local walkableDesyncConnection = nil
@@ -964,7 +967,7 @@ end
 toggleWalkableDesync(Settings.WalkableDesync)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 22. SPINBOT
+-- 23. SPINBOT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local spinBotConnection = nil
@@ -985,7 +988,7 @@ end
 toggleSpinBot(Settings.SpinBot)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 23. DESYNC VISUAL (Fake Character)
+-- 24. DESYNC VISUAL (Fake Character)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local fakeCharacter = nil
@@ -1032,11 +1035,8 @@ end
 updateDesyncVisual()
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 24. ORBITING TARGET EFFECT
+-- 25. ORBITING TARGET EFFECT
 -- ═══════════════════════════════════════════════════════════════════════════
-
-local orbitingObjects = {}
-local orbitConnection = nil
 
 local function createOrbitingEffect()
     if not Settings.OrbitingTargets then return end
@@ -1088,7 +1088,7 @@ local function createOrbitingEffect()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 25. FLY / NOCLIP / SPEED
+-- 26. FLY / NOCLIP / SPEED
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local flyVelocity = nil
@@ -1169,7 +1169,7 @@ end
 applySpeed()
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 26. BUNNY HOP / AUTO STRAFING / AUTO CROUCH
+-- 27. BUNNY HOP / AUTO STRAFING / AUTO CROUCH
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local connections = {}
@@ -1210,7 +1210,7 @@ startConnection("AutoCrouch", function()
 end, Settings.AutoCrouch)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 27. ESP
+-- 28. ESP
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local ESPObjects = {}
@@ -1511,7 +1511,7 @@ local function updateESP()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 28. CHAMS
+-- 29. CHAMS
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local chamsObjects = {}
@@ -1537,7 +1537,7 @@ local function applyChams()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 29. WORLD MODS
+-- 30. WORLD MODS
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function applyWorldMods()
@@ -1555,7 +1555,7 @@ local function applyWorldMods()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 30. RESPAWN HANDLER
+-- 31. RESPAWN HANDLER (FIXED: Added createOrbitingEffect)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 LocalPlayer.CharacterAdded:Connect(function(newChar)
@@ -1584,10 +1584,11 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     applyChams()
     applyHitboxExpander()
     hookWeaponSlowdown()
+    createOrbitingEffect()  -- ⬅️ ADDED
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 31. INITIALIZATION
+-- 32. INITIALIZATION
 -- ═══════════════════════════════════════════════════════════════════════════
 
 task.wait(1)
@@ -1604,7 +1605,7 @@ updateDesyncVisual()
 createOrbitingEffect()
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 32. UPDATE LOOPS
+-- 33. UPDATE LOOPS
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -1644,333 +1645,335 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 33. STARLIGHT UI (Every Feature Toggleable with Dropdowns/Sliders)
+-- 34. STARLIGHT UI (Every Feature Toggleable with Dropdowns/Sliders)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local MainWindow = Starlight:CreateWindow({
-    Title = "tapped.cc",
-    Subtitle = "Da Hood HvH",
-    Keybind = Enum.KeyCode.K,
-})
+-- Wrap UI creation in pcall to prevent crashes from beta Starlight
+pcall(function()
+    local MainWindow = Starlight:CreateWindow({
+        Title = "tapped.cc",
+        Subtitle = "Da Hood HvH",
+        Keybind = Enum.KeyCode.K,
+    })
 
--- ── Ragebot Tab ──
-local RageTab = MainWindow:CreateTab({ Name = "Ragebot", Icon = NebulaIcons.Target })
+    -- ── Ragebot Tab ──
+    local RageTab = MainWindow:CreateTab({ Name = "Ragebot", Icon = NebulaIcons.Target })
 
-local SilentAimSection = RageTab:CreateSection({ Name = "Silent Aim" })
-SilentAimSection:CreateToggle({ 
-    Name = "Enable Silent Aim", 
-    Default = true, 
-    Callback = function(v) Settings.SilentAim = v; if not v then clearCache() end end 
-})
-SilentAimSection:CreateDropdown({ 
-    Name = "Aim Mode", 
-    Options = {"Rage", "Legit"}, 
-    Default = "Rage", 
-    Callback = function(v) Settings.SilentAimMode = v; clearCache() end 
-})
-SilentAimSection:CreateSlider({ 
-    Name = "FOV Radius", 
-    Min = 50, 
-    Max = 9999, 
-    Default = 9999, 
-    Suffix = "px", 
-    Callback = function(v) Settings.FOVRadius = v; clearCache() end 
-})
-SilentAimSection:CreateDropdown({ 
-    Name = "Aim Part", 
-    Options = {"Head", "Torso", "HumanoidRootPart", "UpperTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}, 
-    Default = "Head", 
-    Callback = function(v) Settings.AimPart = v; clearCache() end 
-})
-SilentAimSection:CreateToggle({ 
-    Name = "Team Check", 
-    Default = false, 
-    Callback = function(v) Settings.TeamCheck = v; clearCache() end 
-})
-SilentAimSection:CreateToggle({ 
-    Name = "Visibility Check", 
-    Default = false, 
-    Callback = function(v) Settings.VisibleCheck = v; clearCache() end 
-})
-SilentAimSection:CreateToggle({ 
-    Name = "Right Click Only", 
-    Default = false, 
-    Callback = function(v) Settings.OnRightClickOnly = v; clearCache() end 
-})
+    local SilentAimSection = RageTab:CreateSection({ Name = "Silent Aim" })
+    SilentAimSection:CreateToggle({ 
+        Name = "Enable Silent Aim", 
+        Default = true, 
+        Callback = function(v) Settings.SilentAim = v; if not v then clearCache() end end 
+    })
+    SilentAimSection:CreateDropdown({ 
+        Name = "Aim Mode", 
+        Options = {"Rage", "Legit"}, 
+        Default = "Rage", 
+        Callback = function(v) Settings.SilentAimMode = v; clearCache() end 
+    })
+    SilentAimSection:CreateSlider({ 
+        Name = "FOV Radius", 
+        Min = 50, 
+        Max = 9999, 
+        Default = 9999, 
+        Suffix = "px", 
+        Callback = function(v) Settings.FOVRadius = v; clearCache() end 
+    })
+    SilentAimSection:CreateDropdown({ 
+        Name = "Aim Part", 
+        Options = {"Head", "Torso", "HumanoidRootPart", "UpperTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}, 
+        Default = "Head", 
+        Callback = function(v) Settings.AimPart = v; clearCache() end 
+    })
+    SilentAimSection:CreateToggle({ 
+        Name = "Team Check", 
+        Default = false, 
+        Callback = function(v) Settings.TeamCheck = v; clearCache() end 
+    })
+    SilentAimSection:CreateToggle({ 
+        Name = "Visibility Check", 
+        Default = false, 
+        Callback = function(v) Settings.VisibleCheck = v; clearCache() end 
+    })
+    SilentAimSection:CreateToggle({ 
+        Name = "Right Click Only", 
+        Default = false, 
+        Callback = function(v) Settings.OnRightClickOnly = v; clearCache() end 
+    })
 
-local RageFeatures = RageTab:CreateSection({ Name = "Rage Features" })
-RageFeatures:CreateToggle({ 
-    Name = "No Recoil", 
-    Default = true, 
-    Callback = function(v) Settings.NoRecoil = v end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Auto Shoot", 
-    Default = true, 
-    Callback = function(v) Settings.AutoShoot = v end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Kill Aura", 
-    Default = true, 
-    Callback = function(v) 
-        Settings.KillAura = v
-        if v then 
-            updateKillAuraBubble() 
-        else 
-            if killAuraBubble then killAuraBubble:Destroy() end
-            if killAuraRing then killAuraRing:Destroy() end
-            if bubbleSpinConnection then bubbleSpinConnection:Disconnect() end
-            killAuraBubble = nil
-            killAuraRing = nil
-            bubbleSpinConnection = nil
-        end
-    end 
-})
-RageFeatures:CreateSlider({ 
-    Name = "Kill Aura Range", 
-    Min = 50, 
-    Max = 500, 
-    Default = 300, 
-    Suffix = "studs", 
-    Callback = function(v) 
-        Settings.KillAuraRange = v
-        if Settings.KillAura then updateKillAuraBubble() end
-    end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Triggerbot", 
-    Default = true, 
-    Callback = function(v) Settings.Triggerbot = v end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Hitbox Expander", 
-    Default = true, 
-    Callback = function(v) Settings.HitboxExpander = v; applyHitboxExpander() end 
-})
-RageFeatures:CreateSlider({ 
-    Name = "Hitbox Size", 
-    Min = 5, 
-    Max = 50, 
-    Default = 25, 
-    Suffix = "studs", 
-    Callback = function(v) Settings.HitboxExpanderSize = v; applyHitboxExpander() end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Hitbox Visual", 
-    Default = true, 
-    Callback = function(v) Settings.HitboxVisual = v; applyHitboxExpander() end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Bullet TP", 
-    Default = true, 
-    Callback = function(v) Settings.BulletTP = v end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Prediction", 
-    Default = true, 
-    Callback = function(v) Settings.Prediction = v end 
-})
-RageFeatures:CreateSlider({ 
-    Name = "Prediction Value", 
-    Min = 0.01, 
-    Max = 0.3, 
-    Default = 0.121, 
-    Suffix = "s", 
-    Callback = function(v) Settings.PredictionValue = v end 
-})
-RageFeatures:CreateToggle({ 
-    Name = "Airshot Resolver", 
-    Default = true, 
-    Callback = function(v) Settings.AirshotResolver = v end 
-})
-
-local SmartFeatures = RageTab:CreateSection({ Name = "Smart Features" })
-SmartFeatures:CreateToggle({ 
-    Name = "Auto Weapon Select", 
-    Default = true, 
-    Callback = function(v) Settings.AutoWeapon = v end 
-})
-SmartFeatures:CreateToggle({ 
-    Name = "Auto Stomp", 
-    Default = true, 
-    Callback = function(v) Settings.AutoStomp = v end 
-})
-SmartFeatures:CreateToggle({ 
-    Name = "Target Indicator", 
-    Default = true, 
-    Callback = function(v) 
-        Settings.TargetIndicator = v
-        if not v and frame then frame.Visible = false end
-    end 
-})
-SmartFeatures:CreateToggle({ 
-    Name = "Fake Macro (90+ FPS)", 
-    Default = false, 
-    Callback = function(v) Settings.FakeMacro = v end 
-})
-SmartFeatures:CreateKeybind({ 
-    Name = "Ragebot Toggle Key", 
-    Default = Enum.KeyCode.X, 
-    Callback = function(key) Settings.RagebotKeybind = key end 
-})
-SmartFeatures:CreateKeybind({ 
-    Name = "Stomp Key", 
-    Default = Enum.KeyCode.E, 
-    Callback = function(key) Settings.StompKeybind = key end 
-})
-
--- ── Visuals Tab ──
-local VisTab = MainWindow:CreateTab({ Name = "Visuals", Icon = NebulaIcons.Eye })
-
-local ESPSection = VisTab:CreateSection({ Name = "ESP" })
-ESPSection:CreateToggle({ 
-    Name = "Enable ESP", 
-    Default = true, 
-    Callback = function(v) 
-        Settings.ESPEnabled = v
-        if v then createESP() else 
-            for _, obj in pairs(ESPObjects) do
-                if obj.Box then obj.Box:Remove() end
-                if obj.Name then obj.Name:Remove() end
-                if obj.Health then obj.Health:Remove() end
-                if obj.Distance then obj.Distance:Remove() end
-                if obj.Snapline then obj.Snapline:Remove() end
-                if obj.Tracer then obj.Tracer:Remove() end
-                if obj.HeadDot then obj.HeadDot:Remove() end
-                if obj.Skeleton then for _, line in pairs(obj.Skeleton) do if line then line:Remove() end end end
-                if obj.Weapon then obj.Weapon:Remove() end
+    local RageFeatures = RageTab:CreateSection({ Name = "Rage Features" })
+    RageFeatures:CreateToggle({ 
+        Name = "No Recoil", 
+        Default = true, 
+        Callback = function(v) Settings.NoRecoil = v end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Auto Shoot", 
+        Default = true, 
+        Callback = function(v) Settings.AutoShoot = v end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Kill Aura", 
+        Default = true, 
+        Callback = function(v) 
+            Settings.KillAura = v
+            if v then 
+                updateKillAuraBubble() 
+            else 
+                if killAuraBubble then killAuraBubble:Destroy() end
+                if killAuraRing then killAuraRing:Destroy() end
+                if bubbleSpinConnection then bubbleSpinConnection:Disconnect() end
+                killAuraBubble = nil
+                killAuraRing = nil
+                bubbleSpinConnection = nil
             end
-            ESPObjects = {}
-        end
-    end 
-})
-ESPSection:CreateToggle({ Name = "Boxes", Default = true, Callback = function(v) Settings.ESPBoxes = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Names", Default = true, Callback = function(v) Settings.ESPNames = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Health", Default = true, Callback = function(v) Settings.ESPHealth = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Distance", Default = true, Callback = function(v) Settings.ESPDistance = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Snaplines", Default = false, Callback = function(v) Settings.ESPSnaplines = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Tracers", Default = false, Callback = function(v) Settings.ESPTracers = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Head Dot", Default = true, Callback = function(v) Settings.ESPHeadDot = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Skeleton", Default = false, Callback = function(v) Settings.ESPSkeleton = v; createESP() end })
-ESPSection:CreateToggle({ Name = "Weapon Name", Default = false, Callback = function(v) Settings.ESPWeapon = v; createESP() end })
-ESPSection:CreateColorPicker({ Name = "Enemy Color", Default = Color3.fromRGB(255, 0, 0), Callback = function(c) Settings.ESPEnemyColor = c; createESP() end })
-ESPSection:CreateColorPicker({ Name = "Team Color", Default = Color3.fromRGB(0, 255, 0), Callback = function(c) Settings.ESPTeamColor = c; createESP() end })
-ESPSection:CreateColorPicker({ Name = "Visible Color", Default = Color3.fromRGB(255, 255, 0), Callback = function(c) Settings.ESPVisibleColor = c; createESP() end })
+        end 
+    })
+    RageFeatures:CreateSlider({ 
+        Name = "Kill Aura Range", 
+        Min = 50, 
+        Max = 500, 
+        Default = 300, 
+        Suffix = "studs", 
+        Callback = function(v) 
+            Settings.KillAuraRange = v
+            if Settings.KillAura then updateKillAuraBubble() end
+        end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Triggerbot", 
+        Default = true, 
+        Callback = function(v) Settings.Triggerbot = v end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Hitbox Expander", 
+        Default = true, 
+        Callback = function(v) Settings.HitboxExpander = v; applyHitboxExpander() end 
+    })
+    RageFeatures:CreateSlider({ 
+        Name = "Hitbox Size", 
+        Min = 5, 
+        Max = 50, 
+        Default = 25, 
+        Suffix = "studs", 
+        Callback = function(v) Settings.HitboxExpanderSize = v; applyHitboxExpander() end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Hitbox Visual", 
+        Default = true, 
+        Callback = function(v) Settings.HitboxVisual = v; applyHitboxExpander() end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Bullet TP", 
+        Default = true, 
+        Callback = function(v) Settings.BulletTP = v end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Prediction", 
+        Default = true, 
+        Callback = function(v) Settings.Prediction = v end 
+    })
+    RageFeatures:CreateSlider({ 
+        Name = "Prediction Value", 
+        Min = 0.01, 
+        Max = 0.3, 
+        Default = 0.121, 
+        Suffix = "s", 
+        Callback = function(v) Settings.PredictionValue = v end 
+    })
+    RageFeatures:CreateToggle({ 
+        Name = "Airshot Resolver", 
+        Default = true, 
+        Callback = function(v) Settings.AirshotResolver = v end 
+    })
 
-local ChamsSection = VisTab:CreateSection({ Name = "Chams" })
-ChamsSection:CreateToggle({ Name = "Enable Chams", Default = true, Callback = function(v) Settings.ChamsEnabled = v; applyChams() end })
-ChamsSection:CreateToggle({ Name = "Player Chams", Default = true, Callback = function(v) Settings.ChamsPlayer = v; applyChams() end })
-ChamsSection:CreateColorPicker({ Name = "Chams Color", Default = Color3.fromRGB(0, 255, 255), Callback = function(c) Settings.ChamsColor = c; applyChams() end })
-ChamsSection:CreateSlider({ Name = "Chams Transparency", Min = 0, Max = 1, Default = 0.4, Increment = 0.05, Callback = function(v) Settings.ChamsTransparency = v; applyChams() end })
+    local SmartFeatures = RageTab:CreateSection({ Name = "Smart Features" })
+    SmartFeatures:CreateToggle({ 
+        Name = "Auto Weapon Select", 
+        Default = true, 
+        Callback = function(v) Settings.AutoWeapon = v end 
+    })
+    SmartFeatures:CreateToggle({ 
+        Name = "Auto Stomp", 
+        Default = true, 
+        Callback = function(v) Settings.AutoStomp = v end 
+    })
+    SmartFeatures:CreateToggle({ 
+        Name = "Target Indicator", 
+        Default = true, 
+        Callback = function(v) 
+            Settings.TargetIndicator = v
+            if not v and frame then frame.Visible = false end
+        end 
+    })
+    SmartFeatures:CreateToggle({ 
+        Name = "Fake Macro (90+ FPS)", 
+        Default = false, 
+        Callback = function(v) Settings.FakeMacro = v end 
+    })
+    SmartFeatures:CreateKeybind({ 
+        Name = "Ragebot Toggle Key", 
+        Default = Enum.KeyCode.X, 
+        Callback = function(key) Settings.RagebotKeybind = key end 
+    })
+    SmartFeatures:CreateKeybind({ 
+        Name = "Stomp Key", 
+        Default = Enum.KeyCode.E, 
+        Callback = function(key) Settings.StompKeybind = key end 
+    })
 
-local TracerSection = VisTab:CreateSection({ Name = "Glow Tracers" })
-TracerSection:CreateToggle({ Name = "Enable Glow Tracers", Default = true, Callback = function(v) Settings.GlowTracers = v end })
-TracerSection:CreateColorPicker({ Name = "Tracer Glow Color", Default = Color3.fromRGB(255, 50, 50), Callback = function(c) Settings.TracerGlowColor = c end })
-TracerSection:CreateSlider({ Name = "Tracer Lifetime", Min = 0.1, Max = 1.5, Default = 0.6, Suffix = "s", Callback = function(v) Settings.TracerLifeTime = v end })
-TracerSection:CreateSlider({ Name = "Tracer Thickness", Min = 0.1, Max = 1.5, Default = 0.5, Callback = function(v) Settings.TracerThickness = v end })
+    -- ── Visuals Tab ──
+    local VisTab = MainWindow:CreateTab({ Name = "Visuals", Icon = NebulaIcons.Eye })
 
-local WorldSection = VisTab:CreateSection({ Name = "World Mods" })
-WorldSection:CreateSlider({ Name = "Brightness", Min = 0, Max = 5, Default = 1.5, Callback = function(v) Settings.WorldBrightness = v; applyWorldMods() end })
-WorldSection:CreateColorPicker({ Name = "Ambient Color", Default = Color3.fromRGB(200, 200, 200), Callback = function(c) Settings.WorldAmbient = c; applyWorldMods() end })
-WorldSection:CreateColorPicker({ Name = "Sky Color", Default = Color3.fromRGB(0, 0, 0), Callback = function(c) Settings.WorldSkyColor = c; applyWorldMods() end })
-WorldSection:CreateColorPicker({ Name = "Bottom Color", Default = Color3.fromRGB(0, 0, 0), Callback = function(c) Settings.WorldBottomColor = c; applyWorldMods() end })
-WorldSection:CreateToggle({ Name = "Fog", Default = false, Callback = function(v) Settings.WorldFogEnabled = v; applyWorldMods() end })
-WorldSection:CreateColorPicker({ Name = "Fog Color", Default = Color3.fromRGB(0, 0, 0), Callback = function(c) Settings.WorldFogColor = c; applyWorldMods() end })
-WorldSection:CreateSlider({ Name = "Fog End", Min = 100, Max = 5000, Default = 1000, Suffix = "studs", Callback = function(v) Settings.WorldFogEnd = v; applyWorldMods() end })
+    local ESPSection = VisTab:CreateSection({ Name = "ESP" })
+    ESPSection:CreateToggle({ 
+        Name = "Enable ESP", 
+        Default = true, 
+        Callback = function(v) 
+            Settings.ESPEnabled = v
+            if v then createESP() else 
+                for _, obj in pairs(ESPObjects) do
+                    if obj.Box then obj.Box:Remove() end
+                    if obj.Name then obj.Name:Remove() end
+                    if obj.Health then obj.Health:Remove() end
+                    if obj.Distance then obj.Distance:Remove() end
+                    if obj.Snapline then obj.Snapline:Remove() end
+                    if obj.Tracer then obj.Tracer:Remove() end
+                    if obj.HeadDot then obj.HeadDot:Remove() end
+                    if obj.Skeleton then for _, line in pairs(obj.Skeleton) do if line then line:Remove() end end end
+                    if obj.Weapon then obj.Weapon:Remove() end
+                end
+                ESPObjects = {}
+            end
+        end 
+    })
+    ESPSection:CreateToggle({ Name = "Boxes", Default = true, Callback = function(v) Settings.ESPBoxes = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Names", Default = true, Callback = function(v) Settings.ESPNames = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Health", Default = true, Callback = function(v) Settings.ESPHealth = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Distance", Default = true, Callback = function(v) Settings.ESPDistance = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Snaplines", Default = false, Callback = function(v) Settings.ESPSnaplines = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Tracers", Default = false, Callback = function(v) Settings.ESPTracers = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Head Dot", Default = true, Callback = function(v) Settings.ESPHeadDot = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Skeleton", Default = false, Callback = function(v) Settings.ESPSkeleton = v; createESP() end })
+    ESPSection:CreateToggle({ Name = "Weapon Name", Default = false, Callback = function(v) Settings.ESPWeapon = v; createESP() end })
+    ESPSection:CreateColorPicker({ Name = "Enemy Color", Default = Color3.fromRGB(255, 0, 0), Callback = function(c) Settings.ESPEnemyColor = c; createESP() end })
+    ESPSection:CreateColorPicker({ Name = "Team Color", Default = Color3.fromRGB(0, 255, 0), Callback = function(c) Settings.ESPTeamColor = c; createESP() end })
+    ESPSection:CreateColorPicker({ Name = "Visible Color", Default = Color3.fromRGB(255, 255, 0), Callback = function(c) Settings.ESPVisibleColor = c; createESP() end })
 
-local FOVSection = VisTab:CreateSection({ Name = "FOV" })
-FOVSection:CreateToggle({ Name = "FOV Circle", Default = true, Callback = function(v) Settings.FOVCircleVisible = v end })
-FOVSection:CreateColorPicker({ Name = "FOV Color", Default = Color3.fromRGB(255, 0, 0), Callback = function(c) Settings.FOVCircleColor = c end })
+    local ChamsSection = VisTab:CreateSection({ Name = "Chams" })
+    ChamsSection:CreateToggle({ Name = "Enable Chams", Default = true, Callback = function(v) Settings.ChamsEnabled = v; applyChams() end })
+    ChamsSection:CreateToggle({ Name = "Player Chams", Default = true, Callback = function(v) Settings.ChamsPlayer = v; applyChams() end })
+    ChamsSection:CreateColorPicker({ Name = "Chams Color", Default = Color3.fromRGB(0, 255, 255), Callback = function(c) Settings.ChamsColor = c; applyChams() end })
+    ChamsSection:CreateSlider({ Name = "Chams Transparency", Min = 0, Max = 1, Default = 0.4, Increment = 0.05, Callback = function(v) Settings.ChamsTransparency = v; applyChams() end })
 
--- ── HvH Tab ──
-local HvHTab = MainWindow:CreateTab({ Name = "HvH", Icon = NebulaIcons.Shield })
+    local TracerSection = VisTab:CreateSection({ Name = "Glow Tracers" })
+    TracerSection:CreateToggle({ Name = "Enable Glow Tracers", Default = true, Callback = function(v) Settings.GlowTracers = v end })
+    TracerSection:CreateColorPicker({ Name = "Tracer Glow Color", Default = Color3.fromRGB(255, 50, 50), Callback = function(c) Settings.TracerGlowColor = c end })
+    TracerSection:CreateSlider({ Name = "Tracer Lifetime", Min = 0.1, Max = 1.5, Default = 0.6, Suffix = "s", Callback = function(v) Settings.TracerLifeTime = v end })
+    TracerSection:CreateSlider({ Name = "Tracer Thickness", Min = 0.1, Max = 1.5, Default = 0.5, Callback = function(v) Settings.TracerThickness = v end })
 
-local HvHSection = HvHTab:CreateSection({ Name = "HvH Features" })
-HvHSection:CreateToggle({ 
-    Name = "Walkable Desync (Replaces Anti-Aim)", 
-    Default = false, 
-    Callback = function(v) Settings.WalkableDesync = v; toggleWalkableDesync(v) end 
-})
-HvHSection:CreateSlider({ 
-    Name = "Desync Amount", 
-    Min = 30, 
-    Max = 180, 
-    Default = 120, 
-    Suffix = "°", 
-    Callback = function(v) Settings.DesyncAmount = v end 
-})
-HvHSection:CreateToggle({ 
-    Name = "Velocity Desync", 
-    Default = false, 
-    Callback = function(v) Settings.VelocityDesync = v; toggleVelocityDesync(v) end 
-})
-HvHSection:CreateToggle({ 
-    Name = "Network Fake Lag", 
-    Default = false, 
-    Callback = function(v) Settings.NetworkFakeLag = v; toggleNetworkFakeLag(v) end 
-})
-HvHSection:CreateSlider({ 
-    Name = "Fake Lag Factor", 
-    Min = 1, 
-    Max = 20, 
-    Default = 15, 
-    Callback = function(v) Settings.NetworkFakeLagFactor = v end 
-})
-HvHSection:CreateToggle({ 
-    Name = "Anti-Stomp (Defov)", 
-    Default = true, 
-    Callback = function(v) Settings.AntiStomp = v; toggleAntiStomp(v) end 
-})
-HvHSection:CreateToggle({ 
-    Name = "Desync Visual (Fake Character)", 
-    Default = false, 
-    Callback = function(v) Settings.DesyncVisual = v; updateDesyncVisual() end 
-})
-HvHSection:CreateToggle({ 
-    Name = "Orbiting Target Effect", 
-    Default = true, 
-    Callback = function(v) 
-        Settings.OrbitingTargets = v
-        if not v then
-            for _, obj in pairs(orbitingObjects) do if obj then obj:Destroy() end end
-            orbitingObjects = {}
-            if orbitConnection then orbitConnection:Disconnect() end
-            orbitConnection = nil
-        else
-            createOrbitingEffect()
-        end
-    end 
-})
+    local WorldSection = VisTab:CreateSection({ Name = "World Mods" })
+    WorldSection:CreateSlider({ Name = "Brightness", Min = 0, Max = 5, Default = 1.5, Callback = function(v) Settings.WorldBrightness = v; applyWorldMods() end })
+    WorldSection:CreateColorPicker({ Name = "Ambient Color", Default = Color3.fromRGB(200, 200, 200), Callback = function(c) Settings.WorldAmbient = c; applyWorldMods() end })
+    WorldSection:CreateColorPicker({ Name = "Sky Color", Default = Color3.fromRGB(0, 0, 0), Callback = function(c) Settings.WorldSkyColor = c; applyWorldMods() end })
+    WorldSection:CreateColorPicker({ Name = "Bottom Color", Default = Color3.fromRGB(0, 0, 0), Callback = function(c) Settings.WorldBottomColor = c; applyWorldMods() end })
+    WorldSection:CreateToggle({ Name = "Fog", Default = false, Callback = function(v) Settings.WorldFogEnabled = v; applyWorldMods() end })
+    WorldSection:CreateColorPicker({ Name = "Fog Color", Default = Color3.fromRGB(0, 0, 0), Callback = function(c) Settings.WorldFogColor = c; applyWorldMods() end })
+    WorldSection:CreateSlider({ Name = "Fog End", Min = 100, Max = 5000, Default = 1000, Suffix = "studs", Callback = function(v) Settings.WorldFogEnd = v; applyWorldMods() end })
 
-local SpinSection = HvHTab:CreateSection({ Name = "Spin Bot" })
-SpinSection:CreateToggle({ Name = "Spin Bot", Default = false, Callback = function(v) Settings.SpinBot = v; toggleSpinBot(v) end })
-SpinSection:CreateSlider({ Name = "Spin Speed", Min = 1, Max = 20, Default = 5, Callback = function(v) Settings.SpinBotSpeed = v end })
+    local FOVSection = VisTab:CreateSection({ Name = "FOV" })
+    FOVSection:CreateToggle({ Name = "FOV Circle", Default = true, Callback = function(v) Settings.FOVCircleVisible = v end })
+    FOVSection:CreateColorPicker({ Name = "FOV Color", Default = Color3.fromRGB(255, 0, 0), Callback = function(c) Settings.FOVCircleColor = c end })
 
--- ── Misc Tab ──
-local MiscTab = MainWindow:CreateTab({ Name = "Misc", Icon = NebulaIcons.Settings })
+    -- ── HvH Tab ──
+    local HvHTab = MainWindow:CreateTab({ Name = "HvH", Icon = NebulaIcons.Shield })
 
-local MovementSection = MiscTab:CreateSection({ Name = "Movement" })
-MovementSection:CreateToggle({ Name = "Bunny Hop", Default = false, Callback = function(v) Settings.BunnyHop = v end })
-MovementSection:CreateToggle({ Name = "Auto Strafing", Default = false, Callback = function(v) Settings.AutoStrafing = v end })
-MovementSection:CreateToggle({ Name = "Auto Crouch", Default = false, Callback = function(v) Settings.AutoCrouch = v end })
+    local HvHSection = HvHTab:CreateSection({ Name = "HvH Features" })
+    HvHSection:CreateToggle({ 
+        Name = "Walkable Desync (Replaces Anti-Aim)", 
+        Default = false, 
+        Callback = function(v) Settings.WalkableDesync = v; toggleWalkableDesync(v) end 
+    })
+    HvHSection:CreateSlider({ 
+        Name = "Desync Amount", 
+        Min = 30, 
+        Max = 180, 
+        Default = 120, 
+        Suffix = "°", 
+        Callback = function(v) Settings.DesyncAmount = v end 
+    })
+    HvHSection:CreateToggle({ 
+        Name = "Velocity Desync", 
+        Default = false, 
+        Callback = function(v) Settings.VelocityDesync = v; toggleVelocityDesync(v) end 
+    })
+    HvHSection:CreateToggle({ 
+        Name = "Network Fake Lag", 
+        Default = false, 
+        Callback = function(v) Settings.NetworkFakeLag = v; toggleNetworkFakeLag(v) end 
+    })
+    HvHSection:CreateSlider({ 
+        Name = "Fake Lag Factor", 
+        Min = 1, 
+        Max = 20, 
+        Default = 15, 
+        Callback = function(v) Settings.NetworkFakeLagFactor = v end 
+    })
+    HvHSection:CreateToggle({ 
+        Name = "Anti-Stomp (Defov)", 
+        Default = true, 
+        Callback = function(v) Settings.AntiStomp = v; toggleAntiStomp(v) end 
+    })
+    HvHSection:CreateToggle({ 
+        Name = "Desync Visual (Fake Character)", 
+        Default = false, 
+        Callback = function(v) Settings.DesyncVisual = v; updateDesyncVisual() end 
+    })
+    HvHSection:CreateToggle({ 
+        Name = "Orbiting Target Effect", 
+        Default = true, 
+        Callback = function(v) 
+            Settings.OrbitingTargets = v
+            if not v then
+                for _, obj in pairs(orbitingObjects) do if obj then obj:Destroy() end end
+                orbitingObjects = {}
+                if orbitConnection then orbitConnection:Disconnect() end
+                orbitConnection = nil
+            else
+                createOrbitingEffect()
+            end
+        end 
+    })
 
-local FlightSection = MiscTab:CreateSection({ Name = "Flight & Noclip" })
-FlightSection:CreateToggle({ Name = "Fly", Default = false, Callback = function(v) Settings.Fly = v; toggleFly(v) end })
-FlightSection:CreateToggle({ Name = "Noclip", Default = false, Callback = function(v) Settings.Noclip = v; toggleNoclip(v) end })
-FlightSection:CreateSlider({ Name = "Speed", Min = 1, Max = 100, Default = 16, Suffix = "studs/s", Callback = function(v) Settings.Speed = v; applySpeed() end })
+    local SpinSection = HvHTab:CreateSection({ Name = "Spin Bot" })
+    SpinSection:CreateToggle({ Name = "Spin Bot", Default = false, Callback = function(v) Settings.SpinBot = v; toggleSpinBot(v) end })
+    SpinSection:CreateSlider({ Name = "Spin Speed", Min = 1, Max = 20, Default = 5, Callback = function(v) Settings.SpinBotSpeed = v end })
 
-local PerfSection = MiscTab:CreateSection({ Name = "Performance" })
-PerfSection:CreateToggle({ 
-    Name = "No Slowdown (Force Forward)", 
-    Default = true, 
-    Callback = function(v) 
-        Settings.NoSlowDown = v
-        if v then fixSlowdown() end
-    end 
-})
+    -- ── Misc Tab ──
+    local MiscTab = MainWindow:CreateTab({ Name = "Misc", Icon = NebulaIcons.Settings })
+
+    local MovementSection = MiscTab:CreateSection({ Name = "Movement" })
+    MovementSection:CreateToggle({ Name = "Bunny Hop", Default = false, Callback = function(v) Settings.BunnyHop = v end })
+    MovementSection:CreateToggle({ Name = "Auto Strafing", Default = false, Callback = function(v) Settings.AutoStrafing = v end })
+    MovementSection:CreateToggle({ Name = "Auto Crouch", Default = false, Callback = function(v) Settings.AutoCrouch = v end })
+
+    local FlightSection = MiscTab:CreateSection({ Name = "Flight & Noclip" })
+    FlightSection:CreateToggle({ Name = "Fly", Default = false, Callback = function(v) Settings.Fly = v; toggleFly(v) end })
+    FlightSection:CreateToggle({ Name = "Noclip", Default = false, Callback = function(v) Settings.Noclip = v; toggleNoclip(v) end })
+    FlightSection:CreateSlider({ Name = "Speed", Min = 1, Max = 100, Default = 16, Suffix = "studs/s", Callback = function(v) Settings.Speed = v; applySpeed() end })
+
+    local PerfSection = MiscTab:CreateSection({ Name = "Performance" })
+    PerfSection:CreateToggle({ 
+        Name = "No Slowdown (Force Forward)", 
+        Default = true, 
+        Callback = function(v) 
+            Settings.NoSlowDown = v
+            if v then fixSlowdown() end
+        end 
+    })
+end) -- pcall end
 
 print("═" .. string.rep("═", 70))
-print("tapped.cc loaded successfully!")
-print("Version: 2.0.0")
+print("tapped.cc v2.0.1 loaded successfully!")
 print("Press K to open the menu")
 print("═" .. string.rep("═", 70))
