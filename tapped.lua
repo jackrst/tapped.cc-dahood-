@@ -1,4 +1,4 @@
-lua
+
 local function safeStart()
     local ok, err = pcall(function()
         local repo = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/"
